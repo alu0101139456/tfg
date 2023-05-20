@@ -119,7 +119,7 @@ def getMetrics( file_temp, time_aux ):
 
 
 def selectPortMAC():
-    resultado = subprocess.run(['powershell.exe', 'ls', '/dev/tty.*'], capture_output=True, text=True)
+    resultado = subprocess.run(['ls', '/dev/tty.*'], capture_output=True, text=True)
     print(resultado.stdout)
     print("Código de salida:", resultado.returncode)
 
