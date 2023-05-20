@@ -89,17 +89,19 @@ def getTime( opt='D' ):
 
 
 def getMetrics( file_temp, time_aux ):
-    print("Get metrics of: ", time_aux, "sec")
+    moment = f"Get metrics of: {time_aux} sec"
+    saveInFile(moment)
+    print(moment)
     time_trans = 0
     muestras=0
     tiempo_inicial = time.time()
     while time_trans <= time_aux:    
 
-        # arduinoSerial.flush()
-        # arduinoSerial.flush()
-        # voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        # sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
-        # corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        arduinoSerial.flush()
+        arduinoSerial.flush()
+        voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
+        corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
         sensorVoltaje = "{:.3f}".format( int(re.sub('[^0-9]', '', corriente)) * (25.0 / 1023.0) )
         ajusteIntensidad = "{:.3f}".format( 0.32 + (sensorIntensidad - 2.5) / sensibilidad  )
 
@@ -112,9 +114,13 @@ def getMetrics( file_temp, time_aux ):
 
     muestras_ps = muestras/time_trans
 
-    print("El tiempo transcurrido es:", time_trans, "segundos")
-    print("Muestras por segundo:", muestras_ps)
-    print("Muestras obtenidas: ", muestras)
+    stamp = (
+        f"El tiempo transcurrido es: {time_trans} segundos\n"
+        f"Muestras por segundo: {muestras_ps}\n"
+        f"Muestras obtenidas: {muestras}\n"
+    )
+    print(stamp)
+    saveInFile(stamp)
 
 
 def selectPortMAC():
@@ -125,14 +131,16 @@ def selectPortMAC():
     print('Ejemplo: /dev/tty.usbserial-XXXXXX')
     com_port = input()
     
-   
+def saveInFile( input ):
+    file_filter.write(input + '\t')
+
 
 # Default values
 time_test = 3
 time_control = 3
 com_port = 'COM3'
 bps = 115200
-device = 'MAC'
+device = 'INTEL'
 filter_samples = 10
 graphs = 'TRUE'
 
@@ -157,16 +165,6 @@ filter_samples = args.filter_samples if args.filter_samples else filter_samples
 graphs = args.graphs if args.graphs else graphs
 
 # if (device == 'MAC'): selectPortMAC()
-
-print("Parameters to use: ")
-print("Device: ", device)
-print("Time testing(sec): ", time_test)
-print("Port COM Arduino Board: ", com_port)
-print("Bits per second of COM: ", bps)
-print("Númber of samples to filter: ", filter_samples)
-print("Create graphs: ", graphs)
-
-
 nameGlobal = getTime()
 filename = f'{nameGlobal}.csv'
 if not os.path.exists(device): os.mkdir(device)
@@ -179,14 +177,29 @@ path_start = f"{path}_start.csv"
 path_end = f"{path}_end.csv"
 path_global = f"{path}_global.csv"
 path_filter = f"{path}_filter.csv"
+path_info = f"{path}_info.txt"
+
+info = (
+    f"Parameters to use:\n"
+    f"Device: {device}\n"
+    f"Time testing(sec): {time_test}\n"
+    f"Port COM Arduino Board: {com_port}\n"
+    f"Bits per second of COM: {bps}\n"
+    f"Númber of samples to filter: {filter_samples}\n"
+    f"Create graphs: {graphs}"
+)
+print(info)
 
 #Open files
 file_testbench = open(path_testbench, 'w')
 file_start = open(path_start, 'w')
 file_end = open(path_end, 'w')
 file_filter = open(path_filter, 'w')
+file_info = open(path_info, 'w')
 
-# arduinoSerial = serial.Serial(com_port , bps)
+saveInFile(info)
+
+arduinoSerial = serial.Serial(com_port , bps)
 sensibilidad = 0.068
 ajusteIntensidad = 0.0
 sensorVoltaje = 0.0
