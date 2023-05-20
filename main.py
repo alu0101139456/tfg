@@ -36,11 +36,10 @@ def makeGraphic(df,path):
 def launchBench():
     if (device == 'INTEL'):
         cinebench_path = r'D:/Downloads/CinebenchR23/Cinebench.exe'
+        subprocess.Popen([cinebench_path, 'g_CinebenchCpu1Test=true'],  stderr=subprocess.PIPE) 
     else:
-        cinebench_path = r'/Applications/Cinebench.app'
+        subprocess.Popen(['open', '/Applications/Cinebench.app',  '--args', 'g_CinebenchCpu1Test=true'])
 
-    print("Openning Cinebench for ", device)
-    subprocess.Popen([cinebench_path, 'g_CinebenchCpu1Test=true'],  stderr=subprocess.PIPE)
         
     
 def closeBench():
@@ -197,7 +196,7 @@ muestras=0
 
 # getMetrics(file_start, int(time_control))
 
-# cine = launchBench()
+cine = launchBench()
 
 # getMetrics(file_testbench, int(time_test))
 
