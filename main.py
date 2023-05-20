@@ -15,17 +15,15 @@ import numpy as np
 
 
 
-def makeGraphic(file):
-    print("MAKEGRAPHIC: ", file)
-    df = pd.read_csv( file, sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'] )
+def makeGraphic(pd_file, path):
     
     plt.style.use('_mpl-gallery')
     plt.figure(figsize=(20, 16))
-    plt.plot(df['Tiempo'], df['Intensidad'])
+    plt.plot(pd_file['Tiempo'], pd_file['Intensidad'])
     plt.xlabel('Tiempo')
     plt.ylabel('Intensidad')
     plt.title('Título de la gráfica')
-    whitout_ext = file.split('.')[0]
+    whitout_ext = os.path.splitext(os.path.basename(path))[0]
     png_name = f'{whitout_ext}.png'
     plt.savefig(png_name, dpi=300, bbox_inches='tight')
 
@@ -51,29 +49,24 @@ def closeBench():
             proc.kill()
     
 
-def applyFilter(nfiltro):
-    path = f'{device}//{nameGlobal}.csv'
-    df = pd.read_csv( path, sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'] )
+def applyFilter(file_prin, nfiltro):
 
     value = 0
     mediaVoltaje = 0
     mediaIntensidad = 0
-    for i in range( len(df["Intensidad"]) ):
+    for i in range( len(file_prin["Intensidad"]) ):
         
         if ( value < nfiltro ):
-            mediaIntensidad += df["Intensidad"][i]
-            mediaVoltaje += df["Voltaje"][i] 
+            mediaIntensidad += file_prin["Intensidad"][i]
+            mediaVoltaje += file_prin["Voltaje"][i] 
             value += 1
         else:
-            writeInFile( file_filter,"{:.3f}".format(mediaIntensidad/nfiltro), "{:.3f}".format(mediaVoltaje/nfiltro), df["Tiempo"][i])
+            writeInFile( file_filter,"{:.3f}".format(mediaIntensidad/nfiltro), "{:.3f}".format(mediaVoltaje/nfiltro), file_prin["Tiempo"][i])
             mediaVoltaje = 0
             mediaIntensidad = 0
             value = 0
 
- 
-    path = f'{device}//{nameGlobal}_filter.csv'
-    file_filter.close()
-    if (graphs == 'TRUE'): makeGraphic(path)
+    return file_filter
 
 
 def writeInFile( file_temp ,ajusteIntensidad, sensorVoltaje, ntp_time):
@@ -142,7 +135,7 @@ def selectPortMAC():
 
 
 # Default values
-time_test = 20
+time_test = 1
 com_port = 'COM3'
 bps = 115200
 device = 'INTEL'
@@ -178,15 +171,22 @@ print("Númber of samples to filter: ", filter_samples)
 print("Create graphs: ", graphs)
 
 
-# updateTimeWithNTP()
-
 nameGlobal = getTime()
 filename = f'{nameGlobal}.csv'
 if not os.path.exists(device): os.mkdir(device)
-os.mkdir(nameGlobal)
-file_testbench = open(f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_testbench.csv", 'w')
-file_start = open(f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_start.csv", 'w')
-file_end = open(f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_end.csv", 'w')
+os.mkdir(f"{device}\\{nameGlobal}")
+
+# Global variables
+path_testbench = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_testbench.csv"
+path_start = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_start.csv"
+path_end = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_end.csv"
+path_global = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_global.csv"
+path_filter = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_filter.csv"
+
+#Open files
+file_testbench = open(path_testbench, 'w')
+file_start = open(path_start, 'w')
+file_end = open(path_end, 'w')
 
 arduinoSerial = serial.Serial(com_port , bps)
 sensibilidad = 0.068
@@ -196,7 +196,7 @@ tempProcessor = 0.0
 muestras=0
 
 
-getMetrics(file_start, 5)
+getMetrics(file_start, 2)
 
 cine = launchBench()
 
@@ -204,20 +204,38 @@ getMetrics(file_testbench, int(time_test))
 
 closeBench()
 
-getMetrics(file_end, 5)
+getMetrics(file_end, 2)
 
-path = f'{device}//{filename}'
+
+
+
+print("abriendo para panda")
+#Open panda
+df_start = pd.read_csv(path_start,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+df_testbench = pd.read_csv(path_testbench,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+print("abiertos = OK")
+print("Concatenando")
+#Concatenated in global file
+global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
+global_test.to_csv(path_global, index=False, sep='\t', header=None)
+global_test = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+# makeGraphic(global_test, path_global)
+
+
+# file_filter = applyFilter(global_test, filter_samples)
+# applyFilter(filter_samples)
+
+# if (graphs == 'TRUE'):    
+#     makeGraphic(global_test)
+#     makeGraphic(file_filter)
+
 file_start.close()
 file_testbench.close()
 file_end.close()
-
-
-
-if (graphs == 'TRUE'): makeGraphic(path)
-
-file_filter = open(f"{os.getcwd()}\\{device}\\{nameGlobal}_filter.csv", 'w')
-
-applyFilter(filter_samples)
+# file_filter.close()
 arduinoSerial.close()
 
 
