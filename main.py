@@ -95,11 +95,11 @@ def getMetrics( file_temp, time_aux ):
     tiempo_inicial = time.time()
     while time_trans <= time_aux:    
 
-        arduinoSerial.flush()
-        arduinoSerial.flush()
-        voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
-        corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        # arduinoSerial.flush()
+        # arduinoSerial.flush()
+        # voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        # sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
+        # corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
         sensorVoltaje = "{:.3f}".format( int(re.sub('[^0-9]', '', corriente)) * (25.0 / 1023.0) )
         ajusteIntensidad = "{:.3f}".format( 0.32 + (sensorIntensidad - 2.5) / sensibilidad  )
 
@@ -156,7 +156,7 @@ bps = args.bits_per_sec if args.bits_per_sec else bps
 filter_samples = args.filter_samples if args.filter_samples else filter_samples
 graphs = args.graphs if args.graphs else graphs
 
-if (device == 'MAC'): selectPortMAC()
+# if (device == 'MAC'): selectPortMAC()
 
 print("Parameters to use: ")
 print("Device: ", device)
@@ -186,7 +186,7 @@ file_start = open(path_start, 'w')
 file_end = open(path_end, 'w')
 file_filter = open(path_filter, 'w')
 
-arduinoSerial = serial.Serial(com_port , bps)
+# arduinoSerial = serial.Serial(com_port , bps)
 sensibilidad = 0.068
 ajusteIntensidad = 0.0
 sensorVoltaje = 0.0
@@ -194,47 +194,47 @@ tempProcessor = 0.0
 muestras=0
 
 
-# getMetrics(file_start, int(time_control))
+getMetrics(file_start, int(time_control))
 
 cine = launchBench()
 
-# getMetrics(file_testbench, int(time_test))
+getMetrics(file_testbench, int(time_test))
 
-# closeBench()
+closeBench()
 
-# getMetrics(file_end, int(time_control))
-
-
-# file_start.close()
-# file_testbench.close()
-# file_end.close()
+getMetrics(file_end, int(time_control))
 
 
-
-# #Open panda
-# df_start = pd.read_csv(path_start,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-# df_testbench = pd.read_csv(path_testbench,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-# df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+file_start.close()
+file_testbench.close()
+file_end.close()
 
 
 
-# #Concatenated in global file
-
-# global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
-# global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
-
-# global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-
-# applyFilter(global_test, filter_samples)
-# print("Pasando filtro")
-# file_filter.close()
-# df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+#Open panda
+df_start = pd.read_csv(path_start,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+df_testbench = pd.read_csv(path_testbench,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
 
 
-# if (graphs == 'TRUE'):    
-#     print("Creando gráficas. Esto puede tardar unos minutos...")
-#     makeGraphic(global_testbench,path_global)
-#     makeGraphic(df_filter,path_filter)
+
+#Concatenated in global file
+
+global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
+global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
+
+global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+applyFilter(global_test, filter_samples)
+print("Pasando filtro")
+file_filter.close()
+df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+
+if (graphs == 'TRUE'):    
+    print("Creando gráficas. Esto puede tardar unos minutos...")
+    makeGraphic(global_testbench,path_global)
+    makeGraphic(df_filter,path_filter)
 
 
 
