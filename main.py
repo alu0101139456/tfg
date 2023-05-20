@@ -15,21 +15,22 @@ import numpy as np
 
 
 
-def makeGraphic(pd_file, path):
-    
+def makeGraphic(df,path): 
+
     plt.style.use('_mpl-gallery')
     plt.figure(figsize=(20, 16))
-    plt.plot(pd_file['Tiempo'], pd_file['Intensidad'])
+    plt.plot(df['Tiempo'], df['Intensidad'])
     plt.xlabel('Tiempo')
     plt.ylabel('Intensidad')
-    plt.title('Título de la gráfica')
-    whitout_ext = os.path.splitext(os.path.basename(path))[0]
+    plt.title('Consumo energético')
+    whitout_ext = path.split('.')[0]
     png_name = f'{whitout_ext}.png'
     plt.savefig(png_name, dpi=300, bbox_inches='tight')
 
+
 def launchBench():
     if (device == 'INTEL'):
-        cinebench_path = r'D:\Downloads\CinebenchR23\Cinebench.exe'
+        cinebench_path = r'D:/Downloads/CinebenchR23/Cinebench.exe'
     else:
         cinebench_path = r'/Applications/Cinebench.app'
 
@@ -49,24 +50,22 @@ def closeBench():
             proc.kill()
     
 
-def applyFilter(file_prin, nfiltro):
+def applyFilter(df, nfiltro):
 
     value = 0
     mediaVoltaje = 0
     mediaIntensidad = 0
-    for i in range( len(file_prin["Intensidad"]) ):
+    for i in range( len(df["Intensidad"]) ):
         
         if ( value < nfiltro ):
-            mediaIntensidad += file_prin["Intensidad"][i]
-            mediaVoltaje += file_prin["Voltaje"][i] 
+            mediaIntensidad += df["Intensidad"][i]
+            mediaVoltaje += df["Voltaje"][i] 
             value += 1
         else:
-            writeInFile( file_filter,"{:.3f}".format(mediaIntensidad/nfiltro), "{:.3f}".format(mediaVoltaje/nfiltro), file_prin["Tiempo"][i])
+            writeInFile( file_filter,"{:.3f}".format(mediaIntensidad/nfiltro), "{:.3f}".format(mediaVoltaje/nfiltro), df["Tiempo"][i])
             mediaVoltaje = 0
             mediaIntensidad = 0
             value = 0
-
-    return file_filter
 
 
 def writeInFile( file_temp ,ajusteIntensidad, sensorVoltaje, ntp_time):
@@ -75,16 +74,6 @@ def writeInFile( file_temp ,ajusteIntensidad, sensorVoltaje, ntp_time):
     file_temp.write(str(ntp_time) + '\n')
 
 
-def updateTimeWithNTP():
-    print("Hora antes de la sincronización = " + str(datetime.datetime.now().strftime('%H:%M:%S')) )
-    c = ntplib.NTPClient()
-    response = c.request('0.es.pool.ntp.org')
-    system_time = datetime.datetime.now()
-    utc = pytz.UTC
-    utc.localize(system_time + datetime.timedelta(seconds=round(response.offset)))
-    time_updated = datetime.datetime.now(tz=utc).astimezone().replace(microsecond=0)
-    print("Hora después de la sincronización = " + str(datetime.datetime.now().strftime('%H:%M:%S')) )
-    return time_updated.strftime(("%H:%M:%S"))
 
 def getTime( opt='D' ):
     date_time = datetime.datetime.now()
@@ -135,7 +124,8 @@ def selectPortMAC():
 
 
 # Default values
-time_test = 1
+time_test = 30
+time_control = 3
 com_port = 'COM3'
 bps = 115200
 device = 'INTEL'
@@ -145,7 +135,8 @@ graphs = 'TRUE'
 # Getting arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-d", "--device", help="Select device [ INTEL | M1 ] [ default device: INTEL ]")
-parser.add_argument("-t", "--time_test", help="Testing time in seconds [ default time: 60 sec ]")
+parser.add_argument("-t", "--time_test", help="Testing time in seconds [ default time: 30 sec ]")
+parser.add_argument("-c", "--time_control", help="Control time in seconds [ default time: 3 sec ]")
 parser.add_argument("-p", "--com_port", help="Serial COM for Arduino Board [ default PORT_COM: COM3 ]")
 parser.add_argument("-b", "--bits_per_sec", help="Serial COM bits per second [ default dps: 115200 ]")
 parser.add_argument("-f", "--filter_samples", help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
@@ -155,6 +146,7 @@ args = parser.parse_args()
 
 device = args.device if args.device else device
 time_test = args.time_test if args.time_test else time_test
+time_control = args.time_control if args.time_control else time_control
 com_port = args.com_port if args.com_port else com_port
 bps = args.bits_per_sec if args.bits_per_sec else bps
 filter_samples = args.filter_samples if args.filter_samples else filter_samples
@@ -177,16 +169,17 @@ if not os.path.exists(device): os.mkdir(device)
 os.mkdir(f"{device}\\{nameGlobal}")
 
 # Global variables
-path_testbench = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_testbench.csv"
-path_start = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_start.csv"
-path_end = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_end.csv"
-path_global = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_global.csv"
-path_filter = f"{os.getcwd()}\\{device}\\{nameGlobal}\\{nameGlobal}_filter.csv"
+path_testbench = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_testbench.csv"
+path_start = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_start.csv"
+path_end = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_end.csv"
+path_global = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_global.csv"
+path_filter = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_filter.csv"
 
 #Open files
 file_testbench = open(path_testbench, 'w')
 file_start = open(path_start, 'w')
 file_end = open(path_end, 'w')
+file_filter = open(path_filter, 'w')
 
 arduinoSerial = serial.Serial(com_port , bps)
 sensibilidad = 0.068
@@ -196,7 +189,7 @@ tempProcessor = 0.0
 muestras=0
 
 
-getMetrics(file_start, 2)
+getMetrics(file_start, int(time_control))
 
 cine = launchBench()
 
@@ -204,7 +197,7 @@ getMetrics(file_testbench, int(time_test))
 
 closeBench()
 
-getMetrics(file_end, 2)
+getMetrics(file_end, int(time_control))
 
 
 
@@ -219,23 +212,26 @@ print("abiertos = OK")
 print("Concatenando")
 #Concatenated in global file
 global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
-global_test.to_csv(path_global, index=False, sep='\t', header=None)
-global_test = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
 
-# makeGraphic(global_test, path_global)
+global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+applyFilter(global_test, filter_samples)
+
+df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
 
 
-# file_filter = applyFilter(global_test, filter_samples)
-# applyFilter(filter_samples)
 
-# if (graphs == 'TRUE'):    
-#     makeGraphic(global_test)
-#     makeGraphic(file_filter)
+if (graphs == 'TRUE'):    
+    makeGraphic(global_testbench,path_global)
+    makeGraphic(df_filter,path_filter)
+
+
 
 file_start.close()
 file_testbench.close()
 file_end.close()
-# file_filter.close()
+file_filter.close()
 arduinoSerial.close()
 
 
