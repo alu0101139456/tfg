@@ -17,12 +17,17 @@ import numpy as np
 
 def makeGraphic(df,path): 
 
-    plt.style.use('_mpl-gallery')
+    # plt.style.use('_mpl-gallery')
     plt.figure(figsize=(20, 16))
     plt.plot(df['Tiempo'], df['Intensidad'])
     plt.xlabel('Tiempo')
     plt.ylabel('Intensidad')
     plt.title('Consumo energético')
+
+    x_values = df['Tiempo']
+    step = len(x_values) // 30
+    ticks = x_values[::step]
+    plt.xticks(ticks, rotation='vertical')
     whitout_ext = path.split('.')[0]
     png_name = f'{whitout_ext}.png'
     plt.savefig(png_name, dpi=300, bbox_inches='tight')
@@ -35,7 +40,7 @@ def launchBench():
         cinebench_path = r'/Applications/Cinebench.app'
 
     print("Openning Cinebench for ", device)
-    subprocess.Popen([cinebench_path, 'g_CinebenchCpu1Test=true', 'g_CinebenchMinimumTestDuration=30'],  stderr=subprocess.PIPE)
+    subprocess.Popen([cinebench_path, 'g_CinebenchCpu1Test=true'],  stderr=subprocess.PIPE)
         
     
 def closeBench():
@@ -121,14 +126,14 @@ def selectPortMAC():
     print('Ejemplo: /dev/tty.usbserial-XXXXXX')
     com_port = input()
     
-
+   
 
 # Default values
-time_test = 30
+time_test = 3
 time_control = 3
 com_port = 'COM3'
 bps = 115200
-device = 'INTEL'
+device = 'MAC'
 filter_samples = 10
 graphs = 'TRUE'
 
@@ -169,11 +174,12 @@ if not os.path.exists(device): os.mkdir(device)
 os.mkdir(f"{device}\\{nameGlobal}")
 
 # Global variables
-path_testbench = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_testbench.csv"
-path_start = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_start.csv"
-path_end = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_end.csv"
-path_global = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_global.csv"
-path_filter = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}_filter.csv"
+path = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}"
+path_testbench = f"{path}_testbench.csv"
+path_start = f"{path}_start.csv"
+path_end = f"{path}_end.csv"
+path_global = f"{path}_global.csv"
+path_filter = f"{path}_filter.csv"
 
 #Open files
 file_testbench = open(path_testbench, 'w')
@@ -189,47 +195,47 @@ tempProcessor = 0.0
 muestras=0
 
 
-getMetrics(file_start, int(time_control))
+# getMetrics(file_start, int(time_control))
 
-cine = launchBench()
+# cine = launchBench()
 
-getMetrics(file_testbench, int(time_test))
+# getMetrics(file_testbench, int(time_test))
 
-closeBench()
+# closeBench()
 
-getMetrics(file_end, int(time_control))
-
-
-file_start.close()
-file_testbench.close()
-file_end.close()
+# getMetrics(file_end, int(time_control))
 
 
-print("abriendo para panda")
-#Open panda
-df_start = pd.read_csv(path_start,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-df_testbench = pd.read_csv(path_testbench,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-
-print("abiertos = OK")
-print("Concatenando")
-#Concatenated in global file
-
-global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
-global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
-
-global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-
-applyFilter(global_test, filter_samples)
-
-file_filter.close()
-df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+# file_start.close()
+# file_testbench.close()
+# file_end.close()
 
 
 
-if (graphs == 'TRUE'):    
-    makeGraphic(global_testbench,path_global)
-    makeGraphic(df_filter,path_filter)
+# #Open panda
+# df_start = pd.read_csv(path_start,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+# df_testbench = pd.read_csv(path_testbench,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+# df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+
+
+# #Concatenated in global file
+
+# global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
+# global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
+
+# global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+# applyFilter(global_test, filter_samples)
+# print("Pasando filtro")
+# file_filter.close()
+# df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+
+
+# if (graphs == 'TRUE'):    
+#     print("Creando gráficas. Esto puede tardar unos minutos...")
+#     makeGraphic(global_testbench,path_global)
+#     makeGraphic(df_filter,path_filter)
 
 
 
