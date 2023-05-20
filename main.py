@@ -31,7 +31,7 @@ def launchBench():
     if (device == 'INTEL'):
         cinebench_path = r'D:\Downloads\CinebenchR23\Cinebench.exe'
     else:
-        cinebench_path = r'D:\Downloads\CinebenchR23\Cinebench.exe'
+        cinebench_path = r'/Applications/Cinebench.app'
 
     print("Openning Cinebench for ", device)
     subprocess.Popen([cinebench_path, 'g_CinebenchCpu1Test=true', 'g_CinebenchMinimumTestDuration=30'],  stderr=subprocess.PIPE)
