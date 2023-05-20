@@ -200,6 +200,9 @@ closeBench()
 getMetrics(file_end, int(time_control))
 
 
+file_start.close()
+file_testbench.close()
+file_end.close()
 
 
 print("abriendo para panda")
@@ -211,6 +214,7 @@ df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Vo
 print("abiertos = OK")
 print("Concatenando")
 #Concatenated in global file
+
 global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
 global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
 
@@ -218,6 +222,7 @@ global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Int
 
 applyFilter(global_test, filter_samples)
 
+file_filter.close()
 df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
 
 
@@ -228,10 +233,7 @@ if (graphs == 'TRUE'):
 
 
 
-file_start.close()
-file_testbench.close()
-file_end.close()
-file_filter.close()
+
 arduinoSerial.close()
 
 
