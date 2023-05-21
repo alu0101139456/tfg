@@ -5,14 +5,12 @@ import re
 import subprocess
 import time
 from time import ctime
-import ntplib
 import datetime
-import pytz
 import psutil
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-
+from termcolor import colored
 
 
 def makeGraphic(df,path): 
@@ -54,28 +52,24 @@ def closeBench():
             proc.kill()
     
 
-def applyFilter(df, nfiltro):
+def applyFilter(df, nfilter):
 
-    value = 0
-    mediaVoltaje = 0
-    mediaIntensidad = 0
+    avg_volage, avg_current , value = 0, 0, 0
     for i in range( len(df["Intensidad"]) ):
         
-        if ( value < nfiltro ):
-            mediaIntensidad += df["Intensidad"][i]
-            mediaVoltaje += df["Voltaje"][i] 
+        if ( value < nfilter ):
+            avg_current += df["Intensidad"][i]
+            avg_volage += df["Voltaje"][i] 
             value += 1
         else:
-            writeInFile( file_filter,"{:.3f}".format(mediaIntensidad/nfiltro), "{:.3f}".format(mediaVoltaje/nfiltro), df["Tiempo"][i])
-            mediaVoltaje = 0
-            mediaIntensidad = 0
-            value = 0
+            writeInFile( file_filter,"{:.3f}".format(avg_current/nfilter), "{:.3f}".format(avg_volage/nfilter), df["Tiempo"][i])
+            avg_volage, avg_current , value = 0, 0, 0
 
 
-def writeInFile( file_temp ,ajusteIntensidad, sensorVoltaje, ntp_time):
-    file_temp.write(str(ajusteIntensidad) + '\t')
-    file_temp.write(str(sensorVoltaje) + '\t')
-    file_temp.write(str(ntp_time) + '\n')
+def writeInFile( file_temp ,current, voltage, time_stamp):
+    file_temp.write(str(current) + '\t')
+    file_temp.write(str(voltage) + '\t')
+    file_temp.write(str(time_stamp) + '\n')
 
 
 
@@ -88,170 +82,230 @@ def getTime( opt='D' ):
 
 
 
-def getMetrics( file_temp, time_aux ):
-    moment = f"Get metrics of: {time_aux} sec"
+def getMetrics( file_temp, time_of_test ):
+    moment = f"Metrics in: {time_of_test} sec"
     saveInFile(moment)
     print(moment)
-    time_trans = 0
-    muestras=0
-    tiempo_inicial = time.time()
-    while time_trans <= time_aux:    
+    elapsed_time, samples, samples_ps = 0, 0, 0
+    init_time = time.time()
+    while elapsed_time <= time_of_test:    
 
         arduinoSerial.flush()
         arduinoSerial.flush()
-        voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
-        corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
-        sensorVoltaje = "{:.3f}".format( int(re.sub('[^0-9]', '', corriente)) * (25.0 / 1023.0) )
-        ajusteIntensidad = "{:.3f}".format( 0.32 + (sensorIntensidad - 2.5) / sensibilidad  )
+        voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        current_sensor = int(re.sub('[^0-9]', '', voltage)) * (5 / 1023)
+        current = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', current)) * (25.0 / 1023.0) )
+        adjust_intensity = "{:.3f}".format( 0.32 + (current_sensor - 2.5) / sensitivity  )
 
         
-        writeInFile(file_temp, ajusteIntensidad, sensorVoltaje, getTime('T'))    
+        writeInFile(file_temp, adjust_intensity, voltage_sensor, getTime('T'))    
         
-        muestras += 1
-        tiempo_final = time.time()
-        time_trans = tiempo_final - tiempo_inicial
+        samples += 1
+        final_time = time.time()
+        elapsed_time = final_time - init_time
 
-    muestras_ps = muestras/time_trans
+    samples_ps = samples/elapsed_time
 
     stamp = (
-        f"El tiempo transcurrido es: {time_trans} segundos\n"
-        f"Muestras por segundo: {muestras_ps}\n"
-        f"Muestras obtenidas: {muestras}\n"
+        f"\n\tElapsed time: {elapsed_time} sec\n"
+        f"\tSamples obtained per second: {samples_ps}\n"
+        f"\tSamples obtained: {samples}\n"
     )
     print(stamp)
     saveInFile(stamp)
 
 
 def selectPortMAC():
-    resultado = subprocess.run(['ls', '/dev/tty.*'], capture_output=True, text=True)
-    print(resultado.stdout)
-    print("Código de salida:", resultado.returncode)
+    response = subprocess.run(['ls', '/dev/tty.*'], capture_output=True, text=True)
+    print(response.stdout)
+    print("Output:", response.returncode)
 
-    print('Ejemplo: /dev/tty.usbserial-XXXXXX')
+    print('Example: /dev/tty.usbserial-XXXXXX')
     com_port = input()
     
 def saveInFile( input ):
-    file_filter.write(input + '\t')
+    file_info.write( f"\n{'-'* 80}\n")
+    file_info.write(input + '\t')
 
 
-# Default values
-time_test = 3
-time_control = 3
-com_port = 'COM3'
-bps = 115200
-device = 'INTEL'
-filter_samples = 10
-graphs = 'TRUE'
-
-# Getting arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--device", help="Select device [ INTEL | M1 ] [ default device: INTEL ]")
-parser.add_argument("-t", "--time_test", help="Testing time in seconds [ default time: 30 sec ]")
-parser.add_argument("-c", "--time_control", help="Control time in seconds [ default time: 3 sec ]")
-parser.add_argument("-p", "--com_port", help="Serial COM for Arduino Board [ default PORT_COM: COM3 ]")
-parser.add_argument("-b", "--bits_per_sec", help="Serial COM bits per second [ default dps: 115200 ]")
-parser.add_argument("-f", "--filter_samples", help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
-parser.add_argument("-g", "--graphs", help="Create graphs[ TRUE | FALSE ] [ default: TRUE ]")
-
-args = parser.parse_args()
-
-device = args.device if args.device else device
-time_test = args.time_test if args.time_test else time_test
-time_control = args.time_control if args.time_control else time_control
-com_port = args.com_port if args.com_port else com_port
-bps = args.bits_per_sec if args.bits_per_sec else bps
-filter_samples = args.filter_samples if args.filter_samples else filter_samples
-graphs = args.graphs if args.graphs else graphs
-
-# if (device == 'MAC'): selectPortMAC()
-nameGlobal = getTime()
-filename = f'{nameGlobal}.csv'
-if not os.path.exists(device): os.mkdir(device)
-os.mkdir(f"{device}\\{nameGlobal}")
-
-# Global variables
-path = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}"
-path_testbench = f"{path}_testbench.csv"
-path_start = f"{path}_start.csv"
-path_end = f"{path}_end.csv"
-path_global = f"{path}_global.csv"
-path_filter = f"{path}_filter.csv"
-path_info = f"{path}_info.txt"
-
-info = (
-    f"Parameters to use:\n"
-    f"Device: {device}\n"
-    f"Time testing(sec): {time_test}\n"
-    f"Port COM Arduino Board: {com_port}\n"
-    f"Bits per second of COM: {bps}\n"
-    f"Númber of samples to filter: {filter_samples}\n"
-    f"Create graphs: {graphs}"
-)
-print(info)
-
-#Open files
-file_testbench = open(path_testbench, 'w')
-file_start = open(path_start, 'w')
-file_end = open(path_end, 'w')
-file_filter = open(path_filter, 'w')
-file_info = open(path_info, 'w')
-
-saveInFile(info)
-
-arduinoSerial = serial.Serial(com_port , bps)
-sensibilidad = 0.068
-ajusteIntensidad = 0.0
-sensorVoltaje = 0.0
-tempProcessor = 0.0
-muestras=0
+try:
 
 
-getMetrics(file_start, int(time_control))
+    # Default values
+    time_test = 3
+    control_time = 3
+    com_port = 'COM3'
+    bps = 115200
+    device = 'INTEL'
+    filter_samples = 10
+    graphs = 'TRUE'
 
-cine = launchBench()
+    # Getting arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--device",           help="Select device [ INTEL | M1 ] [ default device: INTEL ]")
+    parser.add_argument("-t", "--time_test",        help="Testing time in seconds [ default time: 30 sec ]")
+    parser.add_argument("-c", "--control_time",     help="Control time in seconds [ default time: 3 sec ]")
+    parser.add_argument("-p", "--com_port",         help="Serial COM for Arduino Board [ default PORT_COM: COM3 ]")
+    parser.add_argument("-b", "--bits_per_sec",     help="Serial COM bits per second [ default dps: 115200 ]")
+    parser.add_argument("-f", "--filter_samples",   help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
+    parser.add_argument("-g", "--graphs",           help="Create graphs[ TRUE | FALSE ] [ default: TRUE ]")
 
-getMetrics(file_testbench, int(time_test))
+    args = parser.parse_args()
+    # Global variables
+    device          = args.device if args.device else device
+    time_test       = args.time_test if args.time_test else time_test
+    control_time    = args.control_time if args.control_time else control_time
+    com_port        = args.com_port if args.com_port else com_port
+    bps             = args.bits_per_sec if args.bits_per_sec else bps
+    filter_samples  = args.filter_samples if args.filter_samples else filter_samples
+    graphs          = args.graphs if args.graphs else graphs
 
-closeBench()
+    # if (device == 'MAC'): selectPortMAC()
+    nameGlobal = getTime()
+    filename = f'{nameGlobal}.csv'
+    if not os.path.exists(device): os.mkdir(device)
+    os.mkdir(f"{device}\\{nameGlobal}")
 
-getMetrics(file_end, int(time_control))
+    #Paths
+    path = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}"
+    path_testbench  = f"{path}_testbench.csv"
+    path_start      = f"{path}_start.csv"
+    path_end        = f"{path}_end.csv"
+    path_global     = f"{path}_global.csv"
+    path_filter     = f"{path}_filter.csv"
+    path_info       = f"{path}_info.txt"
+
+    info = (
+        f"\tParameters used:\n"
+        f"\t{'-'* 16}\n"
+        f"\tDevice: {device}\n"
+        f"\tTime testing(sec): {time_test}\n"
+        f"\tTime control(wait in start/end): {control_time}\n"
+        f"\tPort COM Arduino Board: {com_port}\n"
+        f"\tBits per second of COM: {bps}\n"
+        f"\tNumber of samples to filter: {filter_samples}\n"
+        f"\tCreate graphs: {graphs}\n"
+    )
+    print(info)
+    print("Openning files.")
+    #Open files
+    try:
+        file_testbench  = open(path_testbench, 'w')
+        file_start      = open(path_start, 'w')
+        file_end        = open(path_end, 'w')
+        file_filter     = open(path_filter, 'w')
+        file_info       = open(path_info, 'w')
+        print("\tFiles opened. \u2713")
+    except Exception as e:
+        print(f"Error opening files: {e} \u2717")
 
 
-file_start.close()
-file_testbench.close()
-file_end.close()
+    saveInFile(info)
+
+    #Setting varialbes
+    columns=['Intensidad', 'Voltaje', 'Tiempo']
+
+    try:
+        arduinoSerial       = serial.Serial(com_port , bps)
+    except Exception as e:
+        print(f"Error opening serial connection with Arduino: {e} \u2717")
+
+    sensitivity         = 0.068
+    adjust_intensity    = 0.0 
+    voltage_sensor      = 0.0
 
 
+    try:
+        getMetrics(file_start, int(control_time))    
+    except Exception as e:
+        print(f"Error during initial sampling: {e} \u2717")
 
-#Open panda
-df_start = pd.read_csv(path_start,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-df_testbench = pd.read_csv(path_testbench,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-df_end = pd.read_csv(path_end,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
+    try:
+        cine = launchBench()
+    except Exception as e:
+        print(f"Error during launch testbench: {e} \u2717")
 
+    try:
+        getMetrics(file_testbench, int(time_test))
+    except Exception as e:
+        print(f"Error during test sampling: {e} \u2717")
 
+    try:
+        closeBench()
+    except Exception as e:
+        print(f"Error closing testbench: {e} \u2717")
 
-#Concatenated in global file
-
-global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
-global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
-
-global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-
-applyFilter(global_test, filter_samples)
-print("Pasando filtro")
-file_filter.close()
-df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=[ 'Intensidad', 'Voltaje', 'Tiempo'])
-
-
-if (graphs == 'TRUE'):    
-    print("Creando gráficas. Esto puede tardar unos minutos...")
-    makeGraphic(global_testbench,path_global)
-    makeGraphic(df_filter,path_filter)
-
+    try:
+        getMetrics(file_end, int(control_time))
+    except Exception as e:
+        print(f"Error during final sampling: {e} \u2717")
 
 
 
-arduinoSerial.close()
+    try:
+        file_start.close()
+        file_testbench.close()
+        file_end.close()
+    except Exception as e:
+        print(f"Error closing files: {e} \u2717")
 
 
+
+
+    #Open panda
+    print("Read files CSV in panda")
+    try:
+        df_start        = pd.read_csv(path_start,  sep='\t', header=None, names=columns)
+        df_testbench    = pd.read_csv(path_testbench,  sep='\t', header=None, names=columns)        
+        df_end          = pd.read_csv(path_end,  sep='\t', header=None, names=columns)
+        print("\tFiles read successfully. \u2713")
+    except Exception as e:
+        print(f"Error reading CSV files: {e} \u2717")
+
+    #Concatenated in global file
+    print("Joining files")
+    try:
+        global_test = pd.concat([ df_start, df_testbench, df_end], ignore_index=True)
+        global_test.to_csv(path_global, index=False, sep='\t', float_format='%.3f', header=None)
+        print("\tFiles concatenated. \u2713")
+    except Exception as e:
+        print(f"File concatenation error: {e}  \u2717")
+
+
+    try:
+        global_testbench = pd.read_csv(path_global,  sep='\t', header=None, names=columns)
+    except Exception as e:
+        print(f"Error reading CSV files: {e} \u2717")
+
+
+
+    print("Applying filter")
+    try:
+        applyFilter(global_test, filter_samples)
+        file_filter.close()
+        df_filter = pd.read_csv(path_filter,  sep='\t', header=None, names=columns)
+        print("\tFilter applied. \u2713")
+    except Exception as e:
+        print(f"File concatenation error: {e}  \u2717")
+
+
+    if (graphs == 'TRUE'):    
+        print("Creating graphs. This may take a few minutes...")
+        try:
+            makeGraphic(global_testbench,path_global)
+            print("\tGraph global completed. \u2713")
+            makeGraphic(df_filter,path_filter)
+            print("\tGraph with filter completed. \u2713")
+        except Exception as e:
+            print(f"Error making graphs: {e} \u2717")
+
+
+    try:
+        arduinoSerial.close()
+    except Exception as e:
+        print(f"Error closing Arduino serial : {e} \u2717")
+
+    print("\nProcess completed successfully!!!\n")
+except Exception as e:
+    print(f"Error: {e} \u2717")
