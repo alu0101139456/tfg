@@ -95,11 +95,11 @@ def getMetrics( file_temp, time_aux ):
     tiempo_inicial = time.time()
     while time_trans <= time_aux:    
 
-        # arduinoSerial.flush()
-        # arduinoSerial.flush()
-        # voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        # sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
-        # corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        arduinoSerial.flush()
+        arduinoSerial.flush()
+        voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
+        corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
         sensorVoltaje = "{:.3f}".format( int(re.sub('[^0-9]', '', corriente)) * (25.0 / 1023.0) )
         ajusteIntensidad = "{:.3f}".format( 0.32 + (sensorIntensidad - 2.5) / sensibilidad  )
 
@@ -132,7 +132,7 @@ time_test = 3
 time_control = 3
 com_port = 'COM3'
 bps = 115200
-device = 'MAC'
+device = 'INTEL'
 filter_samples = 10
 graphs = 'TRUE'
 
@@ -186,7 +186,7 @@ file_start = open(path_start, 'w')
 file_end = open(path_end, 'w')
 file_filter = open(path_filter, 'w')
 
-# arduinoSerial = serial.Serial(com_port , bps)
+arduinoSerial = serial.Serial(com_port , bps)
 sensibilidad = 0.068
 ajusteIntensidad = 0.0
 sensorVoltaje = 0.0
