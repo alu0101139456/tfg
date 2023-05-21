@@ -1,34 +1,31 @@
-import serial
-import argparse
-import os 
-import re
-import subprocess
-import time
-from time import ctime
-import ntplib
-import datetime
-import pytz
-import psutil
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
+import os
+
+def saveInFile( file, input ):
+    print("saveinFile")
 
 
-def getMetrics( time_aux ):
-    time_trans = 0
-    muestras=0
-    tiempo_inicial = time.time()
-    while time_trans <= time_aux:    
-        print(time_trans)
-        muestras += 1
-        tiempo_final = time.time()
-        time_trans = tiempo_final - tiempo_inicial
 
-    muestras_ps = muestras/time_trans
+device = 'MAC'
+time_test = '10:20:30'
+com_port = 'COM3'
+bps = 115200
+filter_samples = 10
+graphs = 'TRUE'
+nameGlobal = '20-14_23'
 
-    print("El tiempo transcurrido es:", time_trans, "segundos")
-    print("Muestras por segundo:", muestras_ps)
-    print("Muestras obtenidas: ", muestras)
+if not os.path.exists(device): os.mkdir(device)
+os.mkdir(f"{device}\\{nameGlobal}")
+path = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}.txt"
+file_filter = open(path, 'w')
 
+info = (
+    f"Parameters to use:\n"
+    f"Device: {device}\n"
+    f"Time testing(sec): {time_test}\n"
+    f"Port COM Arduino Board: {com_port}\n"
+    f"Bits per second of COM: {bps}\n"
+    f"Númber of samples to filter: {filter_samples}\n"
+    f"Create graphs: {graphs}"
+)
 
-getMetrics(60)
+print(message)
