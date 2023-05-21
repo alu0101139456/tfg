@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from termcolor import colored
-import shutil
+
 
 
 def makeGraphic(df,path): 
@@ -39,9 +39,11 @@ def launchBench():
             arg = 'g_CinebenchCpuXTest=true'
     if (device == 'INTEL'):
         cinebench_path = r'D:/Downloads/CinebenchR23/Cinebench.exe'
-        subprocess.Popen([cinebench_path, arg],  stderr=subprocess.PIPE) 
+        bench = subprocess.Popen([cinebench_path, arg],  stderr=subprocess.PIPE) 
     else:
-        subprocess.Popen(['open', '/Applications/Cinebench.app',  '--args', arg])
+        bench = subprocess.Popen(['open', '/Applications/Cinebench.app',  '--args', arg])
+    
+    return bench
 
         
     
@@ -102,7 +104,40 @@ def getMetrics( file_temp, time_of_test ):
     print(moment)
     elapsed_time, samples, samples_ps = 0, 0, 0
     init_time = time.time()
-    while elapsed_time <= time_of_test:    
+    while ( elapsed_time <= time_of_test ): 
+
+        arduinoSerial.flush()
+        arduinoSerial.flush()
+        voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        current_sensor = int(re.sub('[^0-9]', '', voltage)) * (5 / 1023)
+        current = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', current)) * (25.0 / 1023.0) )
+        adjust_intensity = "{:.3f}".format( 0.32 + (current_sensor - 2.5) / sensitivity  )
+
+        
+        writeInFile(file_temp, adjust_intensity, voltage_sensor, getTime('T'))    
+        
+        samples += 1
+        final_time = time.time()
+        elapsed_time = final_time - init_time
+
+    samples_ps = samples/elapsed_time
+
+    stamp = (
+        f"\n\tElapsed time: {elapsed_time} sec\n"
+        f"\tSamples obtained per second: {samples_ps}\n"
+        f"\tSamples obtained: {samples}\n"
+    )
+    print(stamp)
+    saveInFile(stamp)
+
+def getMetricsWait( file_temp, bench ):
+    moment = f"Metrics waiting"
+    saveInFile(moment)
+    print(moment)
+    elapsed_time, samples, samples_ps = 0, 0, 0
+    init_time = time.time()
+    while ( bench.poll() is None ): 
 
         arduinoSerial.flush()
         arduinoSerial.flush()
@@ -154,7 +189,7 @@ try:
     filter_samples = 10
     graphs = 'TRUE'
     multi_core = 'FALSE'
-
+    wait_to_finish = 'no'
     # Getting arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--device",           help="Select device [ INTEL | M1 ] [ default device: INTEL ]")
@@ -165,6 +200,7 @@ try:
     parser.add_argument("-f", "--filter_samples",   help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
     parser.add_argument("-g", "--graphs",           help="Create graphs[ TRUE | FALSE ] [ default: TRUE ]")
     parser.add_argument("-m", "--multi_core",       help="Multicore [ TRUE | FALSE ] [ default: FALSE ]")
+    parser.add_argument("-w", "--wait_to_finish",   help="Wait normal launch [ yes | no ] [ default: no ]")
 
     args = parser.parse_args()
     # Global variables
@@ -176,11 +212,12 @@ try:
     filter_samples  = args.filter_samples if args.filter_samples else filter_samples
     graphs          = args.graphs if args.graphs else graphs
     multi_core      = args.multi_core if args.multi_core else multi_core
+    wait_to_finish  = args.wait_to_finish if args.wait_to_finish else wait_to_finish
 
     # if (device == 'MAC'): selectPortMAC()
     
     if (multi_core == "FALSE"):
-        nameGlobal = f"{getTime()}_s"
+        nameGlobal = getTime()
     else:
         nameGlobal = f"{getTime()}_m"
     
@@ -201,6 +238,7 @@ try:
         f"\t{'-'* 16}\n"
         f"\tDevice: {device}\n"
         f"\tMulti-Core: {multi_core}\n"
+        f"\tWait until end testbench: {wait_to_finish}"
         f"\tTime testing(sec): {time_test}\n"
         f"\tTime control(wait in start/end): {control_time}\n"
         f"\tPort COM Arduino Board: {com_port}\n"
@@ -255,7 +293,10 @@ try:
 
 
     try:
-        getMetrics(file_testbench, int(time_test))
+        if (wait_to_finish == 'no'):
+            getMetrics(file_testbench, int(time_test))
+        else:
+            getMetricsWait(file_testbench, cine)
     except Exception as e:
         print(f"Error during test sampling: {e} \u2717")
         raise
