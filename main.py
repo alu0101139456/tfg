@@ -92,11 +92,11 @@ def getMetrics( file_temp, time_of_test ):
 
         arduinoSerial.flush()
         arduinoSerial.flush()
-        voltaje = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        sensorIntensidad = int(re.sub('[^0-9]', '', voltaje)) * (5 / 1023)
-        corriente = arduinoSerial.readline().decode('iso-8859-1').rstrip()
-        sensorVoltaje = "{:.3f}".format( int(re.sub('[^0-9]', '', corriente)) * (25.0 / 1023.0) )
-        ajusteIntensidad = "{:.3f}".format( 0.32 + (sensorIntensidad - 2.5) / sensibilidad  )
+        voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        current_sensor = int(re.sub('[^0-9]', '', voltage)) * (5 / 1023)
+        current = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', current)) * (25.0 / 1023.0) )
+        adjust_intensity = "{:.3f}".format( 0.32 + (current_sensor - 2.5) / sensitivity  )
 
         
         writeInFile(file_temp, adjust_intensity, voltage_sensor, getTime('T'))    
