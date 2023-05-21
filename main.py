@@ -33,11 +33,15 @@ def makeGraphic(df,path):
 
 
 def launchBench():
+    if (multi_core == 'FALSE'):
+            arg = 'g_CinebenchCpu1Test=true'
+    else:
+            arg = 'g_CinebenchCpuXTest=true'
     if (device == 'INTEL'):
         cinebench_path = r'D:/Downloads/CinebenchR23/Cinebench.exe'
-        subprocess.Popen([cinebench_path, 'g_CinebenchCpu1Test=true'],  stderr=subprocess.PIPE) 
+        subprocess.Popen([cinebench_path, arg],  stderr=subprocess.PIPE) 
     else:
-        subprocess.Popen(['open', '/Applications/Cinebench.app',  '--args', 'g_CinebenchCpu1Test=true'])
+        subprocess.Popen(['open', '/Applications/Cinebench.app',  '--args', arg])
 
         
     
@@ -149,6 +153,7 @@ try:
     device = 'INTEL'
     filter_samples = 10
     graphs = 'TRUE'
+    multi_core = 'FALSE'
 
     # Getting arguments
     parser = argparse.ArgumentParser()
@@ -159,6 +164,7 @@ try:
     parser.add_argument("-b", "--bits_per_sec",     help="Serial COM bits per second [ default dps: 115200 ]")
     parser.add_argument("-f", "--filter_samples",   help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
     parser.add_argument("-g", "--graphs",           help="Create graphs[ TRUE | FALSE ] [ default: TRUE ]")
+    parser.add_argument("-m", "--multi_core",       help="Multicore [ TRUE | FALSE ] [ default: FALSE ]")
 
     args = parser.parse_args()
     # Global variables
@@ -169,10 +175,15 @@ try:
     bps             = args.bits_per_sec if args.bits_per_sec else bps
     filter_samples  = args.filter_samples if args.filter_samples else filter_samples
     graphs          = args.graphs if args.graphs else graphs
+    multi_core      = args.multi_core if args.multi_core else multi_core
 
     # if (device == 'MAC'): selectPortMAC()
-    nameGlobal = getTime()
-    filename = f'{nameGlobal}.csv'
+    
+    if (multi_core == "FALSE"):
+        nameGlobal = f"{getTime()}_s"
+    else:
+        nameGlobal = f"{getTime()}_m"
+    
     if not os.path.exists(device): os.mkdir(device)
     os.mkdir(f"{device}\\{nameGlobal}")
 
@@ -189,6 +200,7 @@ try:
         f"\tParameters used:\n"
         f"\t{'-'* 16}\n"
         f"\tDevice: {device}\n"
+        f"\tMulti-Core: {multi_core}\n"
         f"\tTime testing(sec): {time_test}\n"
         f"\tTime control(wait in start/end): {control_time}\n"
         f"\tPort COM Arduino Board: {com_port}\n"
@@ -324,7 +336,8 @@ try:
         print(f"Error closing Arduino serial : {e} \u2717")
         raise
 
-
+    file_info.close()
+    file_filter.close()
     print("\nProcess completed successfully!!!\n")
 except:
     closeFiles()
