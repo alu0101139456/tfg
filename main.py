@@ -238,7 +238,7 @@ try:
         f"\t{'-'* 16}\n"
         f"\tDevice: {device}\n"
         f"\tMulti-Core: {multi_core}\n"
-        f"\tWait until end testbench: {wait_to_finish}"
+        f"\tWait until end testbench: {wait_to_finish}\n"
         f"\tTime testing(sec): {time_test}\n"
         f"\tTime control(wait in start/end): {control_time}\n"
         f"\tPort COM Arduino Board: {com_port}\n"
