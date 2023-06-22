@@ -7,7 +7,7 @@ import time
 com_port = 'COM3'
 bps = 115200
 
-arduinoSerial = serial.Serial(com_port , bps)
+arduinoSerial       = serial.Serial(com_port , bps)
 sensitivity         = 0.068
 
 samples = 0

@@ -124,9 +124,9 @@ def getMetrics( file_temp, time_of_test ):
     samples_ps = samples/elapsed_time
 
     stamp = (
-        f"\n\tElapsed time: {elapsed_time} sec\n"
-        f"\tSamples obtained per second: {samples_ps}\n"
-        f"\tSamples obtained: {samples}\n"
+        f"\n\tElapsed time: {elapsed_time:.0f} sec\n"
+        f"\tSamples obtained per second: {samples_ps:.0f}\n"
+        f"\tSamples obtained: {samples:.0f}\n"
     )
     print(stamp)
     saveInFile(stamp)
@@ -157,9 +157,9 @@ def getMetricsWait( file_temp, bench ):
     samples_ps = samples/elapsed_time
 
     stamp = (
-        f"\n\tElapsed time: {elapsed_time} sec\n"
-        f"\tSamples obtained per second: {samples_ps}\n"
-        f"\tSamples obtained: {samples}\n"
+        f"\n\tElapsed time: {elapsed_time:.0f} sec\n"
+        f"\tSamples obtained per second: {samples_ps:.0f}\n"
+        f"\tSamples obtained: {samples:.0f}\n"
     )
     print(stamp)
     saveInFile(stamp)
@@ -178,43 +178,45 @@ def saveInFile( input ):
     file_info.write(input + '\t')
 
 
+
+
+# Default values
+time_test = 30
+control_time = 3
+com_port = 'COM4'
+bps = 115200
+device = 'INTEL'
+filter_samples = 10
+graphs = 'TRUE'
+multi_core = 'FALSE'
+wait_to_finish = 'no'
+# Getting arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("-d", "--device",           help="Select device [ INTEL | M1 ] [ default device: INTEL ]")
+parser.add_argument("-t", "--time_test",        help="Testing time in seconds [ default time: 30 sec ]")
+parser.add_argument("-c", "--control_time",     help="Control time in seconds [ default time: 3 sec ]")
+parser.add_argument("-p", "--com_port",         help="Serial COM for Arduino Board [ default PORT_COM: COM3 ]")
+parser.add_argument("-b", "--bits_per_sec",     help="Serial COM bits per second [ default dps: 115200 ]")
+parser.add_argument("-f", "--filter_samples",   help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
+parser.add_argument("-g", "--graphs",           help="Create graphs[ TRUE | FALSE ] [ default: TRUE ]")
+parser.add_argument("-m", "--multi_core",       help="Multicore [ TRUE | FALSE ] [ default: FALSE ]")
+parser.add_argument("-w", "--wait_to_finish",   help="Wait normal launch [ yes | no ] [ default: no ]")
+
+
+
+args = parser.parse_args()
+# Global variables
+device          = args.device if args.device else device
+time_test       = args.time_test if args.time_test else time_test
+control_time    = args.control_time if args.control_time else control_time
+com_port        = args.com_port if args.com_port else com_port
+bps             = args.bits_per_sec if args.bits_per_sec else bps
+filter_samples  = args.filter_samples if args.filter_samples else filter_samples
+graphs          = args.graphs if args.graphs else graphs
+multi_core      = args.multi_core if args.multi_core else multi_core
+wait_to_finish  = args.wait_to_finish if args.wait_to_finish else wait_to_finish
+
 try:
-
-    # Default values
-    time_test = 30
-    control_time = 3
-    com_port = 'COM3'
-    bps = 115200
-    device = 'INTEL'
-    filter_samples = 10
-    graphs = 'TRUE'
-    multi_core = 'FALSE'
-    wait_to_finish = 'no'
-    # Getting arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--device",           help="Select device [ INTEL | M1 ] [ default device: INTEL ]")
-    parser.add_argument("-t", "--time_test",        help="Testing time in seconds [ default time: 30 sec ]")
-    parser.add_argument("-c", "--control_time",     help="Control time in seconds [ default time: 3 sec ]")
-    parser.add_argument("-p", "--com_port",         help="Serial COM for Arduino Board [ default PORT_COM: COM3 ]")
-    parser.add_argument("-b", "--bits_per_sec",     help="Serial COM bits per second [ default dps: 115200 ]")
-    parser.add_argument("-f", "--filter_samples",   help="Number of samples to obtain arithmetic average [ default filter_samples: 10 ]")
-    parser.add_argument("-g", "--graphs",           help="Create graphs[ TRUE | FALSE ] [ default: TRUE ]")
-    parser.add_argument("-m", "--multi_core",       help="Multicore [ TRUE | FALSE ] [ default: FALSE ]")
-    parser.add_argument("-w", "--wait_to_finish",   help="Wait normal launch [ yes | no ] [ default: no ]")
-
-    args = parser.parse_args()
-    # Global variables
-    device          = args.device if args.device else device
-    time_test       = args.time_test if args.time_test else time_test
-    control_time    = args.control_time if args.control_time else control_time
-    com_port        = args.com_port if args.com_port else com_port
-    bps             = args.bits_per_sec if args.bits_per_sec else bps
-    filter_samples  = args.filter_samples if args.filter_samples else filter_samples
-    graphs          = args.graphs if args.graphs else graphs
-    multi_core      = args.multi_core if args.multi_core else multi_core
-    wait_to_finish  = args.wait_to_finish if args.wait_to_finish else wait_to_finish
-
-    # if (device == 'MAC'): selectPortMAC()
     
     if (multi_core == "FALSE"):
         nameGlobal = getTime()
@@ -261,7 +263,7 @@ try:
         raise
 
 
-
+        
     saveInFile(info)
 
     #Setting varialbes
@@ -273,7 +275,7 @@ try:
         print(f"Error opening serial connection with Arduino: {e} \u2717")
         raise
 
-    sensitivity         = 0.068
+    sensitivity         = 0.068 if device == 'INTEL' else 0.165
     adjust_intensity    = 0.0 
     voltage_sensor      = 0.0
 
@@ -381,13 +383,14 @@ try:
     file_filter.close()
     print("\nProcess completed successfully!!!\n")
 except:
-    closeFiles()
-    file_info.close()
-    file_filter.close()
-    dir_rm = f"{device}/{nameGlobal}"
-    if (device == 'INTEL'):
-        subprocess.run(["powershell.exe", f'Remove-Item "{device}/{nameGlobal}" -Recurse -Confirm:$false'], shell=True)
-    else:
-        os.system(f"rm {device}/{nameGlobal}")
+    if args.help is not None:
+        closeFiles()
+        file_info.close()
+        file_filter.close()
+        dir_rm = f"{device}/{nameGlobal}"
+        if (device == 'INTEL'):
+            subprocess.run(["powershell.exe", f'Remove-Item "{device}/{nameGlobal}" -Recurse -Confirm:$false'], shell=True)
+        else:
+            os.system(f"rm {device}/{nameGlobal}")
     
     print(f"Ejecution stoped \u2717")
