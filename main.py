@@ -14,7 +14,6 @@ import numpy as np
 
 def makeGraphic(df,path): 
 
-    # plt.style.use('_mpl-gallery')
     plt.figure(figsize=(20, 16))
     plt.plot(df['Tiempo'], df['Intensidad'])
     plt.xlabel('Tiempo')
@@ -106,11 +105,15 @@ def getMetrics( file_temp, time_of_test ):
 
         arduinoSerial.flush() # clean serial
         arduinoSerial.flush() # clean serial
-        voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        current_sensor = int(re.sub('[^0-9]', '', voltage)) * (5 / 1023)
-        current = arduinoSerial.readline().decode('iso-8859-1').rstrip()
-        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', current)) * (25.0 / 1023.0) )
+        # Read VOLTAGE CURRENT SENSOR
+        vol_current = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
+        # Read VOLTAGE VOLTAGE SENSOR
+        vol_voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()
+        # C
+        current_sensor = int(re.sub('[^0-9]', '', vol_current)) * (5 / 1023)
         adjust_intensity = "{:.3f}".format( (current_sensor - 2.5) / sensitivity  )
+        
+        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', vol_voltage)) * (25.0 / 1023.0) )
         
         writeInFile(file_temp, adjust_intensity, voltage_sensor, getTime('T'))       
         
@@ -129,13 +132,14 @@ def getMetrics( file_temp, time_of_test ):
     saveInFile(stamp)
 
 def getMetricsWait( file_temp, bench ):
+
     moment = f"Metrics waiting"
     saveInFile(moment)
-    print(moment)
+    print(moment)    
     elapsed_time, samples, samples_ps = 0, 0, 0
     init_time = time.time()
     while ( bench.poll() is None ): 
-
+        
         arduinoSerial.flush() # clean serial
         arduinoSerial.flush() # clean serial
         voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
@@ -290,14 +294,17 @@ try:
 
     try:
         cine = launchBench()
+        print('POL= ', cine.poll() )
     except Exception as e:
         print(f"Error during launch testbench: {e} \u2717")
         raise
 
-
+        
     try:
         if (wait_to_finish == 'no'):
+            print('POL= ', cine.poll() )
             getMetrics(file_testbench, int(time_test))
+            print('POL= ', cine.poll() )
         else:
             getMetricsWait(file_testbench, cine)
     except Exception as e:
