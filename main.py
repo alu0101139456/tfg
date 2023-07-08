@@ -10,8 +10,6 @@ import psutil
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from termcolor import colored
-
 
 
 def makeGraphic(df,path): 
@@ -55,7 +53,7 @@ def closeBench():
     
     for proc in psutil.process_iter(['name']):
         if proc.info['name'] == program:
-            # Cerramos el proceso 
+            # Force close program 
             proc.kill()
     
 
@@ -106,16 +104,18 @@ def getMetrics( file_temp, time_of_test ):
     init_time = time.time()
     while ( elapsed_time <= time_of_test ): 
 
-        arduinoSerial.flush()
-        arduinoSerial.flush()
-        voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        current_sensor = int(re.sub('[^0-9]', '', voltage)) * (5 / 1023)
-        current = arduinoSerial.readline().decode('iso-8859-1').rstrip()
-        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', current)) * (25.0 / 1023.0) )
-        adjust_intensity = "{:.3f}".format( 0.32 + (current_sensor - 2.5) / sensitivity  )
-
+        arduinoSerial.flush() # clean serial
+        arduinoSerial.flush() # clean serial
+        # Read voltage from CURRENT SENSOR
+        vol_current = int(arduinoSerial.readline().decode('iso-8859-1').strip()) * (5 / 1023.0)
+        if vol_current:
+            current =  "{:.3f}".format( (vol_current - 2.5) / sensitivity )
+        # Read voltage from VOLTAGE SENSOR
+        vol_voltage = int(arduinoSerial.readline().decode('iso-8859-1').strip()) * (25.0 / 1023.0)
+        if vol_voltage:
+            voltage =  "{:.3f}".format( (vol_voltage - 2.5) / sensitivity )
         
-        writeInFile(file_temp, adjust_intensity, voltage_sensor, getTime('T'))    
+        writeInFile(file_temp, current, voltage, getTime('T'))    
         
         samples += 1
         final_time = time.time()
@@ -134,21 +134,22 @@ def getMetrics( file_temp, time_of_test ):
 def getMetricsWait( file_temp, bench ):
     moment = f"Metrics waiting"
     saveInFile(moment)
-    print(moment)
     elapsed_time, samples, samples_ps = 0, 0, 0
     init_time = time.time()
     while ( bench.poll() is None ): 
 
-        arduinoSerial.flush()
-        arduinoSerial.flush()
-        voltage = arduinoSerial.readline().decode('iso-8859-1').rstrip()    
-        current_sensor = int(re.sub('[^0-9]', '', voltage)) * (5 / 1023)
-        current = arduinoSerial.readline().decode('iso-8859-1').rstrip()
-        voltage_sensor = "{:.3f}".format( int(re.sub('[^0-9]', '', current)) * (25.0 / 1023.0) )
-        adjust_intensity = "{:.3f}".format( 0.32 + (current_sensor - 2.5) / sensitivity  )
-
+        arduinoSerial.flush() # clean serial
+        arduinoSerial.flush() # clean serial
+        # Read voltage from CURRENT SENSOR
+        vol_current = int(arduinoSerial.readline().decode('iso-8859-1').strip()) * (5 / 1023.0)
+        if vol_current:
+            current =  "{:.3f}".format( (vol_current - 2.5) / sensitivity )
+        # Read voltage from VOLTAGE SENSOR
+        vol_voltage = int(arduinoSerial.readline().decode('iso-8859-1').strip()) * (25.0 / 1023.0)
+        if vol_voltage:
+            voltage =  "{:.3f}".format( (vol_voltage - 2.5) / sensitivity )
         
-        writeInFile(file_temp, adjust_intensity, voltage_sensor, getTime('T'))    
+        writeInFile(file_temp, current, voltage, getTime('T'))    
         
         samples += 1
         final_time = time.time()
@@ -182,8 +183,8 @@ def saveInFile( input ):
 
 # Default values
 time_test = 30
-control_time = 3
-com_port = 'COM4'
+control_time = 10
+com_port = 'COM3'
 bps = 115200
 device = 'INTEL'
 filter_samples = 10
@@ -216,18 +217,23 @@ graphs          = args.graphs if args.graphs else graphs
 multi_core      = args.multi_core if args.multi_core else multi_core
 wait_to_finish  = args.wait_to_finish if args.wait_to_finish else wait_to_finish
 
-try:
-    
+try:    
     if (multi_core == "FALSE"):
         nameGlobal = getTime()
     else:
         nameGlobal = f"{getTime()}_m"
     
     if not os.path.exists(device): os.mkdir(device)
-    os.mkdir(f"{device}\\{nameGlobal}")
-
-    #Paths
-    path = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}"
+    
+    #Paths and create folder
+    if ( device == 'INTEL'):
+        os.mkdir(f"{device}\\{nameGlobal}")
+        path = f"{os.getcwd()}\{device}\{nameGlobal}\{nameGlobal}"
+    else:
+        os.mkdir(f"{device}/{nameGlobal}")
+        path = f"{os.getcwd()}/{device}/{nameGlobal}/{nameGlobal}"
+        
+    
     path_testbench  = f"{path}_testbench.csv"
     path_start      = f"{path}_start.csv"
     path_end        = f"{path}_end.csv"
